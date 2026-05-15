@@ -1,0 +1,2 @@
+- adjust the role assignment algo we need to balance the role types more carefully. there should never be more than one executive in each group
+- 

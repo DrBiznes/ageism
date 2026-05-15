@@ -34,13 +34,23 @@ export function PlayerPage() {
   const [name, setName] = useState("");
   const [faceId, setFaceId] = useState("");
   const [joining, setJoining] = useState(false);
+  const [previewRole, setPreviewRole] = useState<Role | null>(null);
 
-  const count = players?.length ?? 0;
   const roles = ["early-career", "mid-career", "senior"] as const;
-  const previewRole = roles[count % 3];
 
+  // Lock the preview role the first time players loads — never shifts as others join
   useEffect(() => {
-    if (!faceId) setFaceId(ROLE_FACES[previewRole][0]);
+    if (previewRole !== null || players === undefined) return;
+    const counts: Record<Role, number> = { "early-career": 0, "mid-career": 0, "senior": 0 };
+    players.forEach((p) => { if (p.role in counts) counts[p.role as Role]++; });
+    const min = Math.min(counts["early-career"], counts["mid-career"], counts["senior"]);
+    const leastFilled = roles.find((r) => counts[r] === min) ?? "early-career";
+    setPreviewRole(leastFilled);
+  }, [players]);
+
+  // Seed default face once role is known
+  useEffect(() => {
+    if (previewRole && !faceId) setFaceId(ROLE_FACES[previewRole][0]);
   }, [previewRole]);
 
   if (session === undefined) return <Page><Centered><p className="text-base" style={{ color: "var(--ink-muted)" }}>Connecting…</p></Centered></Page>;
@@ -51,6 +61,9 @@ export function PlayerPage() {
 
   // ── Not yet joined ───────────────────────────────────────────────────
   if (!player) {
+    if (previewRole === null) {
+      return <Page><Centered><p className="mono text-sm" style={{ color: "var(--ink-faint)" }}>Loading…</p></Centered></Page>;
+    }
     const char = CHARACTERS[previewRole];
     const currentFace = (faceId || ROLE_FACES[previewRole][0]) as FaceId;
 

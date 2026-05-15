@@ -25,7 +25,11 @@ export const join = mutation({
       .collect();
 
     const roles = ["early-career", "mid-career", "senior"] as const;
-    const role = roles[all.length % 3];
+    const counts: Record<string, number> = { "early-career": 0, "mid-career": 0, "senior": 0 };
+    for (const p of all) counts[p.role]++;
+    const minCount = Math.min(counts["early-career"], counts["mid-career"], counts["senior"]);
+    const leastFilled = roles.filter((r) => counts[r] === minCount);
+    const role = leastFilled[0];
 
     return await ctx.db.insert("players", {
       sessionId,
@@ -83,7 +87,8 @@ export const assignGroups = mutation({
     const mid = shuffle(players.filter((p) => p.role === "mid-career"));
     const senior = shuffle(players.filter((p) => p.role === "senior"));
 
-    const numGroups = Math.min(early.length, mid.length, senior.length);
+    const minRoleCount = Math.min(early.length, mid.length, senior.length);
+    const numGroups = Math.max(1, Math.min(Math.floor(players.length / 4), minRoleCount));
     const defaultScenarios = ["A", "B", "C", "D", "E"];
 
     for (let i = 0; i < numGroups; i++) {
