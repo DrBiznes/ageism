@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: #faf8f2;
+  --cream: #f0ece0;
+  --ink: #18150f;
+  --ink-muted: #6b6258;
+  --ink-faint: #b0a898;
+  --accent: #8b2020;
+  --accent-light: #fdf4f4;
+  --border: #d8d2c4;
+  --border-strong: #a09688;
+
+  --role-early: #1a3a5c;
+  --role-early-bg: #eef3f9;
+  --role-mid: #1f4a2e;
+  --role-mid-bg: #eef4f0;
+  --role-senior: #5c2020;
+  --role-senior-bg: #f9eeee;
+
+  --display-bg: #0a0908;
+  --display-surface: #1a1812;
+  --display-border: #2e2a22;
+  --display-text: #f0ece0;
+  --display-muted: #7a7268;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'EB Garamond', Georgia, serif;
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { min-height: 100svh; }
+
+.mono { font-family: 'IBM Plex Mono', 'Courier New', monospace; }
