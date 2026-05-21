@@ -2,7 +2,8 @@ import { useParams } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { CHARACTERS, type Role } from "../data/characters";
-import { FaceAvatar, type FaceId } from "../components/FaceAvatar";
+import { FaceAvatar } from "../components/FaceAvatar";
+import type { FaceId } from "../components/faceAvatarOptions";
 import { SCENARIOS } from "../data/scenarios";
 import type { Id } from "../../convex/_generated/dataModel";
 

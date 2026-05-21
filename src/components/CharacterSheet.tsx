@@ -1,6 +1,7 @@
 import { CHARACTERS, type Role } from "../data/characters";
 import type { ScenarioRoleBrief } from "../data/scenarios";
-import { FaceAvatar, type FaceId } from "./FaceAvatar";
+import { FaceAvatar } from "./FaceAvatar";
+import type { FaceId } from "./faceAvatarOptions";
 
 interface CharacterSheetProps {
   role: Role;

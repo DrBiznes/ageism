@@ -6,7 +6,7 @@ import { CharacterSheet } from "../components/CharacterSheet";
 import { AvatarPicker } from "../components/AvatarPicker";
 import { SCENARIOS } from "../data/scenarios";
 import { CHARACTERS, type Role } from "../data/characters";
-import { ROLE_FACES, type FaceId } from "../components/FaceAvatar";
+import { ROLE_FACES, type FaceId } from "../components/faceAvatarOptions";
 
 const MAX_GROUPS = 5;
 

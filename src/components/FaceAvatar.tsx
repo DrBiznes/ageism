@@ -1,9 +1,5 @@
 import React from "react";
-
-export type FaceId =
-  | "early-a" | "early-b" | "early-c" | "early-d"
-  | "mid-a"   | "mid-b"   | "mid-c"   | "mid-d"
-  | "senior-a"| "senior-b"| "senior-c"| "senior-d";
+import type { FaceId } from "./faceAvatarOptions";
 
 interface FaceProps { size?: number; className?: string }
 
@@ -385,16 +381,204 @@ function SeniorD({ size = 80 }: FaceProps) {
   );
 }
 
-export const FACES: Record<FaceId, (props: FaceProps) => React.ReactElement> = {
-  "early-a": EarlyA, "early-b": EarlyB, "early-c": EarlyC, "early-d": EarlyD,
-  "mid-a":   MidA,   "mid-b":   MidB,   "mid-c":   MidC,   "mid-d":   MidD,
-  "senior-a":SeniorA,"senior-b":SeniorB,"senior-c":SeniorC,"senior-d":SeniorD,
-};
+interface VariantFaceProps extends FaceProps {
+  skin: string;
+  ear: string;
+  shadow: string;
+  hair: string;
+  outfit: string;
+  hairStyle: "short" | "side-part" | "curly" | "long" | "bob" | "bun" | "silver-short" | "silver-bob";
+  glasses?: boolean;
+  facialHair?: "mustache" | "beard";
+  ageLines?: "mid" | "senior";
+}
 
-export const ROLE_FACES: Record<string, FaceId[]> = {
-  "early-career": ["early-a", "early-b", "early-c", "early-d"],
-  "mid-career":   ["mid-a",   "mid-b",   "mid-c",   "mid-d"],
-  "senior":       ["senior-a","senior-b","senior-c","senior-d"],
+function VariantFace({
+  size = 80,
+  skin,
+  ear,
+  shadow,
+  hair,
+  outfit,
+  hairStyle,
+  glasses,
+  facialHair,
+  ageLines,
+}: VariantFaceProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none">
+      <Hair style={hairStyle} color={hair} />
+      <ellipse cx="40" cy="39" rx="18" ry="20" fill={skin} stroke={STROKE} strokeWidth="1.5" />
+      <ellipse cx="22" cy="39" rx="3" ry="4" fill={ear} stroke={STROKE} strokeWidth="1" />
+      <ellipse cx="58" cy="39" rx="3" ry="4" fill={ear} stroke={STROKE} strokeWidth="1" />
+      {hairStyle === "short" && (
+        <>
+          <path d="M20 35 L20 40 Q22 36 22 34Z" fill={hair} />
+          <path d="M60 35 L60 40 Q58 36 58 34Z" fill={hair} />
+        </>
+      )}
+      {glasses ? (
+        <>
+          <rect x="28" y="31" width="11" height="8" rx="2" stroke={STROKE} strokeWidth="1.5" fill="rgba(255,255,255,0.12)" />
+          <rect x="41" y="31" width="11" height="8" rx="2" stroke={STROKE} strokeWidth="1.5" fill="rgba(255,255,255,0.12)" />
+          <line x1="39" y1="35" x2="41" y2="35" stroke={STROKE} strokeWidth="1.5" />
+          <line x1="22" y1="34" x2="28" y2="34" stroke={STROKE} strokeWidth="1.2" />
+          <line x1="52" y1="34" x2="58" y2="34" stroke={STROKE} strokeWidth="1.2" />
+          <circle cx="33.5" cy="35" r="2.4" fill={STROKE} />
+          <circle cx="46.5" cy="35" r="2.4" fill={STROKE} />
+          <circle cx="34.4" cy="34.2" r="0.8" fill="white" />
+          <circle cx="47.4" cy="34.2" r="0.8" fill="white" />
+        </>
+      ) : (
+        <>
+          <ellipse cx="34" cy="35" rx="3" ry={ageLines === "senior" ? "2.7" : "3.2"} fill={STROKE} />
+          <ellipse cx="46" cy="35" rx="3" ry={ageLines === "senior" ? "2.7" : "3.2"} fill={STROKE} />
+          <circle cx="35" cy="34.1" r="0.9" fill="white" />
+          <circle cx="47" cy="34.1" r="0.9" fill="white" />
+        </>
+      )}
+      <path d="M30 31 Q34 29.8 38 31" stroke={STROKE} strokeWidth="1.2" fill="none" strokeLinecap="round" />
+      <path d="M42 31 Q46 29.8 50 31" stroke={STROKE} strokeWidth="1.2" fill="none" strokeLinecap="round" />
+      <path d="M40 39 Q38 43 36 44 Q40 45 44 44 Q42 43 40 39Z" fill={shadow} />
+      {ageLines && (
+        <>
+          <path d="M29 44 Q30 51 31 56" stroke={shadow} strokeWidth="0.8" fill="none" opacity="0.75" />
+          <path d="M51 44 Q50 51 49 56" stroke={shadow} strokeWidth="0.8" fill="none" opacity="0.75" />
+        </>
+      )}
+      {facialHair === "mustache" && (
+        <path d="M34 49 Q37 47 40 49 Q43 47 46 49" stroke={hair} strokeWidth="2" fill="none" strokeLinecap="round" />
+      )}
+      {facialHair === "beard" && (
+        <path d="M30 50 Q40 60 50 50 Q47 64 40 65 Q33 64 30 50Z" fill={hair} opacity="0.35" />
+      )}
+      <path d="M34 52 Q40 56 46 52" stroke={STROKE} strokeWidth="1.5" fill="none" strokeLinecap="round" />
+      <path d="M24 59 Q32 65 40 62 Q48 65 56 59 L60 80 L20 80Z" fill={outfit} />
+      <path d="M40 62 L35 70 L40 67 L45 70 L40 62Z" fill="#f0ece0" />
+    </svg>
+  );
+}
+
+function Hair({ style, color }: { style: VariantFaceProps["hairStyle"]; color: string }) {
+  if (style === "curly") {
+    return (
+      <>
+        <circle cx="24" cy="27" r="8" fill={color} />
+        <circle cx="32" cy="20" r="9" fill={color} />
+        <circle cx="42" cy="18" r="9" fill={color} />
+        <circle cx="52" cy="21" r="9" fill={color} />
+        <circle cx="59" cy="29" r="8" fill={color} />
+      </>
+    );
+  }
+  if (style === "long") {
+    return (
+      <>
+        <path d="M18 32 Q16 52 18 72 L25 70 Q22 52 22 34Z" fill={color} />
+        <path d="M62 32 Q64 52 62 72 L55 70 Q58 52 58 34Z" fill={color} />
+        <path d="M19 32 Q20 12 40 10 Q60 12 61 32 Q56 20 40 20 Q24 20 19 32Z" fill={color} />
+      </>
+    );
+  }
+  if (style === "bob") {
+    return (
+      <>
+        <path d="M20 31 Q20 12 40 10 Q60 12 60 31 Q62 46 56 58 L52 56 Q56 44 56 34 Q52 20 40 20 Q28 20 24 34 Q24 44 28 56 L24 58 Q18 46 20 31Z" fill={color} />
+      </>
+    );
+  }
+  if (style === "bun") {
+    return (
+      <>
+        <circle cx="40" cy="13" r="8" fill={color} />
+        <path d="M19 34 Q20 14 40 12 Q60 14 61 34 Q56 21 40 20 Q24 21 19 34Z" fill={color} />
+      </>
+    );
+  }
+  if (style === "side-part") {
+    return (
+      <>
+        <path d="M20 34 Q20 13 40 11 Q60 13 60 34 Q52 19 37 18 Q27 19 20 34Z" fill={color} />
+        <path d="M38 13 Q46 17 60 26 Q51 16 38 13Z" fill="#ffffff" opacity="0.18" />
+      </>
+    );
+  }
+  if (style === "silver-short") {
+    return (
+      <>
+        <path d="M20 35 Q22 15 40 13 Q58 15 60 35 Q55 23 40 21 Q25 23 20 35Z" fill={color} />
+        <path d="M25 23 Q34 18 48 21" stroke="#f6f2ea" strokeWidth="2" opacity="0.55" />
+      </>
+    );
+  }
+  if (style === "silver-bob") {
+    return (
+      <>
+        <path d="M19 32 Q20 13 40 11 Q60 13 61 32 Q62 49 56 62 L51 59 Q56 44 55 35 Q51 21 40 20 Q29 21 25 35 Q24 44 29 59 L24 62 Q18 49 19 32Z" fill={color} />
+        <path d="M28 20 Q39 15 52 22" stroke="#f8f5ee" strokeWidth="2" opacity="0.5" />
+      </>
+    );
+  }
+  return (
+    <path d="M20 34 Q20 13 40 11 Q60 13 60 34 Q56 19 40 18 Q24 19 20 34Z" fill={color} />
+  );
+}
+
+function EarlyE(props: FaceProps) {
+  return <VariantFace {...props} skin="#9f6844" ear="#8e5836" shadow="#704020" hair="#17100b" outfit="#1a3a5c" hairStyle="side-part" facialHair="mustache" />;
+}
+
+function EarlyF(props: FaceProps) {
+  return <VariantFace {...props} skin="#f0c89a" ear="#e8bc88" shadow="#d4a070" hair="#c46b3a" outfit="#1a3a5c" hairStyle="bob" />;
+}
+
+function EarlyG(props: FaceProps) {
+  return <VariantFace {...props} skin="#6f4a33" ear="#62402b" shadow="#4a2c1a" hair="#100b08" outfit="#1a3a5c" hairStyle="short" glasses />;
+}
+
+function EarlyH(props: FaceProps) {
+  return <VariantFace {...props} skin="#d8ad78" ear="#c99b67" shadow="#b87946" hair="#2c1810" outfit="#1a3a5c" hairStyle="bun" />;
+}
+
+function MidE(props: FaceProps) {
+  return <VariantFace {...props} skin="#c18a5a" ear="#b07848" shadow="#9a5e35" hair="#453024" outfit="#2a3a2a" hairStyle="side-part" facialHair="beard" ageLines="mid" />;
+}
+
+function MidF(props: FaceProps) {
+  return <VariantFace {...props} skin="#7f583b" ear="#70482f" shadow="#5a341d" hair="#2d1a10" outfit="#2a3a2a" hairStyle="bob" glasses ageLines="mid" />;
+}
+
+function MidG(props: FaceProps) {
+  return <VariantFace {...props} skin="#e8bd8a" ear="#dcae78" shadow="#c48a54" hair="#6b4c2a" outfit="#2a3a2a" hairStyle="short" facialHair="mustache" ageLines="mid" />;
+}
+
+function MidH(props: FaceProps) {
+  return <VariantFace {...props} skin="#b89368" ear="#a9825a" shadow="#8f6842" hair="#4b2f24" outfit="#2a3a2a" hairStyle="long" ageLines="mid" />;
+}
+
+function SeniorE(props: FaceProps) {
+  return <VariantFace {...props} skin="#c58f60" ear="#b77e50" shadow="#986039" hair="#d8d0c4" outfit="#5c2020" hairStyle="silver-short" facialHair="mustache" ageLines="senior" />;
+}
+
+function SeniorF(props: FaceProps) {
+  return <VariantFace {...props} skin="#8b5e3c" ear="#7a5030" shadow="#6a4020" hair="#eee8dc" outfit="#5c2020" hairStyle="silver-bob" glasses ageLines="senior" />;
+}
+
+function SeniorG(props: FaceProps) {
+  return <VariantFace {...props} skin="#f0c89a" ear="#e8bc88" shadow="#c89060" hair="#c8c0b0" outfit="#5c2020" hairStyle="silver-short" facialHair="beard" ageLines="senior" />;
+}
+
+function SeniorH(props: FaceProps) {
+  return <VariantFace {...props} skin="#c4a882" ear="#b89870" shadow="#a07848" hair="#ece8e0" outfit="#5c2020" hairStyle="bun" ageLines="senior" />;
+}
+
+const FACES: Record<FaceId, (props: FaceProps) => React.ReactElement> = {
+  "early-a": EarlyA, "early-b": EarlyB, "early-c": EarlyC, "early-d": EarlyD,
+  "early-e": EarlyE, "early-f": EarlyF, "early-g": EarlyG, "early-h": EarlyH,
+  "mid-a":   MidA,   "mid-b":   MidB,   "mid-c":   MidC,   "mid-d":   MidD,
+  "mid-e":   MidE,   "mid-f":   MidF,   "mid-g":   MidG,   "mid-h":   MidH,
+  "senior-a":SeniorA,"senior-b":SeniorB,"senior-c":SeniorC,"senior-d":SeniorD,
+  "senior-e":SeniorE,"senior-f":SeniorF,"senior-g":SeniorG,"senior-h":SeniorH,
 };
 
 export function FaceAvatar({ faceId, size = 80, className = "" }: { faceId: FaceId; size?: number; className?: string }) {
