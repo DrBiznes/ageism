@@ -218,7 +218,8 @@ export function DisplayPage() {
               ["Q1", "What assumptions did you make the first time?"],
               ["Q2", "Where did the conversation or compromise break down?"],
               ["Q3", "What changed between Round 1 and Round 2?"],
-              ["Q4", "How can this apply in real settings for you or your workplace?"],
+              ["Q4", "Did your group come to a decision? What helped or blocked it?"],
+              ["Q5", "How can this apply in real settings for you or your workplace?"],
             ].map(([label, q]) => (
               <div
                 key={label}

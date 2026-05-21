@@ -5,15 +5,14 @@ import type { Id } from "./_generated/dataModel";
 
 const MAX_GROUPS = 5;
 type Role = "early-career" | "mid-career" | "senior";
+const ROLE_CYCLE: Role[] = ["early-career", "early-career", "mid-career"];
 
 // Keep in sync with the same function in PlayerPage.tsx.
 // First MAX_GROUPS joiners are seniors (each anchors a group).
-// After that, slots fill across all groups in row order: E, E, M, E, M, ...
+// After that, roles repeat early-career, early-career, mid-career.
 export function determineRole(joinerIndex: number): Role {
   if (joinerIndex < MAX_GROUPS) return "senior";
-  const slot = Math.floor((joinerIndex - MAX_GROUPS) / MAX_GROUPS);
-  if (slot < 2) return "early-career";
-  return slot % 2 === 0 ? "mid-career" : "early-career";
+  return ROLE_CYCLE[(joinerIndex - MAX_GROUPS) % ROLE_CYCLE.length];
 }
 
 async function reassignGroups(ctx: MutationCtx, sessionId: Id<"sessions">) {
@@ -39,11 +38,6 @@ async function reassignGroups(ctx: MutationCtx, sessionId: Id<"sessions">) {
 
   const roster: (typeof players)[] = Array.from({ length: G }, () => []);
 
-  // Seniors: one per group (round-robin to first G groups).
-  for (let i = 0; i < seniors.length; i++) {
-    roster[i < G ? i : 0].push(seniors[i]);
-  }
-
   const pickGroup = (role: Role): number => {
     let bestIdx = 0;
     let bestRoleCount = Infinity;
@@ -62,6 +56,12 @@ async function reassignGroups(ctx: MutationCtx, sessionId: Id<"sessions">) {
     }
     return bestIdx;
   };
+
+  // Seniors: one per group first, then distribute any extras evenly.
+  for (let i = 0; i < Math.min(seniors.length, G); i++) {
+    roster[i].push(seniors[i]);
+  }
+  for (const s of seniors.slice(G)) roster[pickGroup("senior")].push(s);
 
   for (const e of earlies) roster[pickGroup("early-career")].push(e);
   for (const m of mids) roster[pickGroup("mid-career")].push(m);
@@ -143,6 +143,8 @@ export const revealGroups = mutation({
     scenarioAssignments: v.optional(v.array(v.string())),
   },
   handler: async (ctx, { sessionId, scenarioAssignments }) => {
+    await reassignGroups(ctx, sessionId);
+
     const players = await ctx.db
       .query("players")
       .withIndex("by_session", (q) => q.eq("sessionId", sessionId))

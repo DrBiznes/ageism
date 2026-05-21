@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -11,11 +11,11 @@ import { ROLE_FACES, type FaceId } from "../components/FaceAvatar";
 const MAX_GROUPS = 5;
 
 // Keep in sync with determineRole in convex/players.ts.
+// First five joiners are seniors, then roles repeat early, early, mid.
 function determineRole(joinerIndex: number): Role {
   if (joinerIndex < MAX_GROUPS) return "senior";
-  const slot = Math.floor((joinerIndex - MAX_GROUPS) / MAX_GROUPS);
-  if (slot < 2) return "early-career";
-  return slot % 2 === 0 ? "mid-career" : "early-career";
+  const cycle: Role[] = ["early-career", "early-career", "mid-career"];
+  return cycle[(joinerIndex - MAX_GROUPS) % cycle.length];
 }
 
 function getOrCreateToken(): string {
@@ -44,24 +44,13 @@ export function PlayerPage() {
   const [name, setName] = useState("");
   const [faceId, setFaceId] = useState("");
   const [joining, setJoining] = useState(false);
-  const [previewRole, setPreviewRole] = useState<Role | null>(null);
-
-  // Lock the preview role the first time players loads — never shifts as others join
-  useEffect(() => {
-    if (previewRole !== null || players === undefined) return;
-    setPreviewRole(determineRole(players.length));
-  }, [players]);
-
-  // Seed default face once role is known
-  useEffect(() => {
-    if (previewRole && !faceId) setFaceId(ROLE_FACES[previewRole][0]);
-  }, [previewRole]);
 
   if (session === undefined) return <Page><Centered><p className="text-base" style={{ color: "var(--ink-muted)" }}>Connecting…</p></Centered></Page>;
   if (session === null) return <Page><Centered><p style={{ color: "var(--accent)" }}>Session "{code}" not found.</p></Centered></Page>;
 
   const sessionId = session._id;
   const status = session.status;
+  const previewRole = !player && players !== undefined ? determineRole(players.length) : null;
 
   // ── Not yet joined ───────────────────────────────────────────────────
   if (!player) {
@@ -69,7 +58,8 @@ export function PlayerPage() {
       return <Page><Centered><p className="mono text-sm" style={{ color: "var(--ink-faint)" }}>Loading…</p></Centered></Page>;
     }
     const char = CHARACTERS[previewRole];
-    const currentFace = (faceId || ROLE_FACES[previewRole][0]) as FaceId;
+    const roleFaces = ROLE_FACES[previewRole] as readonly string[];
+    const currentFace = (roleFaces.includes(faceId) ? faceId : ROLE_FACES[previewRole][0]) as FaceId;
 
     async function handleJoin(e: React.FormEvent<HTMLFormElement>) {
       e.preventDefault();
@@ -202,6 +192,7 @@ export function PlayerPage() {
     }
 
     const scenario = SCENARIOS[myGroup.scenarioId as keyof typeof SCENARIOS];
+    const scenarioBrief = scenario.roleBriefs[role];
     const teammates = players?.filter((p) => p.groupNumber === player.groupNumber && p._id !== player._id) ?? [];
 
     return (
@@ -223,6 +214,7 @@ export function PlayerPage() {
             faceId={player.avatar}
             groupNumber={player.groupNumber}
             scenarioTitle={scenario.title}
+            scenarioBrief={scenarioBrief}
             showSecret
           />
 
@@ -253,6 +245,7 @@ export function PlayerPage() {
   if (status === "activity1-round1" || status === "activity1-round2") {
     const round = status === "activity1-round1" ? 1 : 2;
     const scenario = myGroup ? SCENARIOS[myGroup.scenarioId as keyof typeof SCENARIOS] : null;
+    const scenarioBrief = scenario?.roleBriefs[role];
 
     return (
       <Page>
@@ -283,12 +276,21 @@ export function PlayerPage() {
           {scenario && (
             <div style={{ background: "var(--accent-light)", border: "1.5px solid #e8b0b0", borderRadius: "6px", padding: "12px 16px" }}>
               <div className="text-xs uppercase tracking-widest mono mb-1" style={{ color: "var(--accent)" }}>Your scenario</div>
+              <p className="text-sm leading-relaxed mb-2" style={{ color: "var(--ink-muted)" }}>{scenario.setup}</p>
               <p className="text-sm leading-relaxed" style={{ color: "var(--ink)" }}>{scenario.incident}</p>
               <p className="text-xs italic mt-2" style={{ color: "var(--ink-muted)" }}>{scenario.goal}</p>
             </div>
           )}
 
-          <CharacterSheet role={role} name={player.name} faceId={player.avatar} showSecret={round === 1} />
+          <CharacterSheet
+            role={role}
+            name={player.name}
+            faceId={player.avatar}
+            groupNumber={player.groupNumber}
+            scenarioTitle={scenario?.title}
+            scenarioBrief={scenarioBrief}
+            showSecret
+          />
         </div>
       </Page>
     );
@@ -305,6 +307,7 @@ export function PlayerPage() {
               "What assumptions did you make the first time?",
               "Where did the conversation or compromise break down?",
               "What changed between Round 1 and Round 2?",
+              "Did your group come to a decision? What helped or blocked it?",
               "How can this apply in real settings for you or your workplace?",
             ].map((q, i) => (
               <div key={i} style={{ border: "1.5px solid var(--border)", borderRadius: "6px", background: "white", padding: "12px 16px" }}>
