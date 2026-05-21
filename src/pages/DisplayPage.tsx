@@ -157,7 +157,7 @@ export function DisplayPage() {
               Play it out naturally
             </h2>
             <p className="text-2xl mt-2" style={{ color: "var(--display-muted)", fontFamily: "'EB Garamond', serif" }}>
-              Note the tensions that emerge — do not correct them yet
+              Note the tensions that emerge but do not correct them yet
             </p>
           </div>
           <Timer startTime={session.round1StartTime} durationMs={5 * 60 * 1000} large />

@@ -1,5 +1,79 @@
 import { mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+
+const MAX_GROUPS = 5;
+type Role = "early-career" | "mid-career" | "senior";
+
+// Keep in sync with the same function in PlayerPage.tsx.
+// First MAX_GROUPS joiners are seniors (each anchors a group).
+// After that, slots fill across all groups in row order: E, E, M, E, M, ...
+export function determineRole(joinerIndex: number): Role {
+  if (joinerIndex < MAX_GROUPS) return "senior";
+  const slot = Math.floor((joinerIndex - MAX_GROUPS) / MAX_GROUPS);
+  if (slot < 2) return "early-career";
+  return slot % 2 === 0 ? "mid-career" : "early-career";
+}
+
+async function reassignGroups(ctx: MutationCtx, sessionId: Id<"sessions">) {
+  const session = await ctx.db.get(sessionId);
+  if (!session || session.status !== "lobby") return;
+
+  const players = await ctx.db
+    .query("players")
+    .withIndex("by_session", (q) => q.eq("sessionId", sessionId))
+    .collect();
+  players.sort((a, b) => a._creationTime - b._creationTime);
+
+  if (players.length === 0) return;
+
+  const seniors = players.filter((p) => p.role === "senior");
+  const earlies = players.filter((p) => p.role === "early-career");
+  const mids = players.filter((p) => p.role === "mid-career");
+
+  const G = Math.min(
+    MAX_GROUPS,
+    Math.max(seniors.length, Math.ceil(players.length / 6), 1),
+  );
+
+  const roster: (typeof players)[] = Array.from({ length: G }, () => []);
+
+  // Seniors: one per group (round-robin to first G groups).
+  for (let i = 0; i < seniors.length; i++) {
+    roster[i < G ? i : 0].push(seniors[i]);
+  }
+
+  const pickGroup = (role: Role): number => {
+    let bestIdx = 0;
+    let bestRoleCount = Infinity;
+    let bestSize = Infinity;
+    for (let i = 0; i < G; i++) {
+      const roleCount = roster[i].filter((p) => p.role === role).length;
+      const size = roster[i].length;
+      if (
+        roleCount < bestRoleCount ||
+        (roleCount === bestRoleCount && size < bestSize)
+      ) {
+        bestIdx = i;
+        bestRoleCount = roleCount;
+        bestSize = size;
+      }
+    }
+    return bestIdx;
+  };
+
+  for (const e of earlies) roster[pickGroup("early-career")].push(e);
+  for (const m of mids) roster[pickGroup("mid-career")].push(m);
+
+  for (let g = 0; g < G; g++) {
+    for (const p of roster[g]) {
+      if (p.groupNumber !== g + 1) {
+        await ctx.db.patch(p._id, { groupNumber: g + 1 });
+      }
+    }
+  }
+}
 
 export const join = mutation({
   args: {
@@ -24,20 +98,20 @@ export const join = mutation({
       .withIndex("by_session", (q) => q.eq("sessionId", sessionId))
       .collect();
 
-    const roles = ["early-career", "mid-career", "senior"] as const;
-    const counts: Record<string, number> = { "early-career": 0, "mid-career": 0, "senior": 0 };
-    for (const p of all) counts[p.role]++;
-    const minCount = Math.min(counts["early-career"], counts["mid-career"], counts["senior"]);
-    const leastFilled = roles.filter((r) => counts[r] === minCount);
-    const role = leastFilled[0];
+    const role = determineRole(all.length);
 
-    return await ctx.db.insert("players", {
+    const playerId = await ctx.db.insert("players", {
       sessionId,
       name,
       avatar,
       role,
+      groupNumber: 1,
       joinToken,
     });
+
+    await reassignGroups(ctx, sessionId);
+
+    return playerId;
   },
 });
 
@@ -63,7 +137,7 @@ export const list = query({
   },
 });
 
-export const assignGroups = mutation({
+export const revealGroups = mutation({
   args: {
     sessionId: v.id("sessions"),
     scenarioAssignments: v.optional(v.array(v.string())),
@@ -74,45 +148,27 @@ export const assignGroups = mutation({
       .withIndex("by_session", (q) => q.eq("sessionId", sessionId))
       .collect();
 
-    const shuffle = <T>(arr: T[]) => {
-      const a = [...arr];
-      for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-      }
-      return a;
-    };
+    const groupNumbers = Array.from(
+      new Set(
+        players
+          .map((p) => p.groupNumber)
+          .filter((n): n is number => n != null),
+      ),
+    ).sort((a, b) => a - b);
 
-    const early = shuffle(players.filter((p) => p.role === "early-career"));
-    const mid = shuffle(players.filter((p) => p.role === "mid-career"));
-    const senior = shuffle(players.filter((p) => p.role === "senior"));
-
-    const minRoleCount = Math.min(early.length, mid.length, senior.length);
-    const numGroups = Math.max(1, Math.min(Math.floor(players.length / 4), minRoleCount));
     const defaultScenarios = ["A", "B", "C", "D", "E"];
 
-    for (let i = 0; i < numGroups; i++) {
+    for (let i = 0; i < groupNumbers.length; i++) {
       const scenarioId =
         scenarioAssignments?.[i] ?? defaultScenarios[i % defaultScenarios.length];
-      await ctx.db.insert("groups", { sessionId, groupNumber: i + 1, scenarioId });
-      await ctx.db.patch(early[i]._id, { groupNumber: i + 1 });
-      await ctx.db.patch(mid[i]._id, { groupNumber: i + 1 });
-      await ctx.db.patch(senior[i]._id, { groupNumber: i + 1 });
+      await ctx.db.insert("groups", {
+        sessionId,
+        groupNumber: groupNumbers[i],
+        scenarioId,
+      });
     }
 
-    // Extras fill in existing groups as additional early-career
-    const extras = [
-      ...early.slice(numGroups),
-      ...mid.slice(numGroups),
-      ...senior.slice(numGroups),
-    ];
-    for (let i = 0; i < extras.length; i++) {
-      await ctx.db.patch(extras[i]._id, { groupNumber: (i % numGroups) + 1 });
-    }
-
-    // Advance session status
-    const session = await ctx.db.get(sessionId);
-    if (session) await ctx.db.patch(sessionId, { status: "activity1-groups" });
+    await ctx.db.patch(sessionId, { status: "activity1-groups" });
   },
 });
 

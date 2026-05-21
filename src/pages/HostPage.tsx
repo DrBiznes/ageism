@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { CHARACTERS, type Role } from "../data/characters";
@@ -28,14 +28,13 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function HostPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
-  const navigate = useNavigate();
 
   const session = useQuery(api.sessions.get, { sessionId: sessionId as Id<"sessions"> });
   const players = useQuery(api.players.list, { sessionId: sessionId as Id<"sessions"> });
   const groups = useQuery(api.players.listGroups, { sessionId: sessionId as Id<"sessions"> });
 
   const advance = useMutation(api.sessions.advance);
-  const assignGroups = useMutation(api.players.assignGroups);
+  const revealGroups = useMutation(api.players.revealGroups);
 
   if (!session) {
     return (
@@ -51,7 +50,7 @@ export function HostPage() {
   async function handleAdvance() {
     if (!nextStatus) return;
     if (nextStatus === "activity1-groups") {
-      await assignGroups({ sessionId: sessionId as Id<"sessions"> });
+      await revealGroups({ sessionId: sessionId as Id<"sessions"> });
     } else {
       await advance({ sessionId: sessionId as Id<"sessions">, status: nextStatus });
     }
@@ -80,8 +79,10 @@ export function HostPage() {
               </span>
             </div>
           </div>
-          <button
-            onClick={() => navigate(`/display/${sessionId}`)}
+          <a
+            href={`/display/${sessionId}`}
+            target="_blank"
+            rel="noreferrer"
             className="text-sm font-medium px-4 py-2 mono transition-colors"
             style={{
               background: "var(--cream)",
@@ -91,7 +92,7 @@ export function HostPage() {
             }}
           >
             Display Screen
-          </button>
+          </a>
         </div>
 
         {/* Current status */}
@@ -121,7 +122,7 @@ export function HostPage() {
             }}
           >
             {nextStatus === "activity1-groups"
-              ? "Assign Groups + Reveal"
+              ? "Reveal Groups"
               : `Advance → ${STATUS_LABELS[nextStatus] ?? nextStatus}`}
           </button>
         )}

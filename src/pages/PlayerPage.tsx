@@ -8,6 +8,16 @@ import { SCENARIOS } from "../data/scenarios";
 import { CHARACTERS, type Role } from "../data/characters";
 import { ROLE_FACES, type FaceId } from "../components/FaceAvatar";
 
+const MAX_GROUPS = 5;
+
+// Keep in sync with determineRole in convex/players.ts.
+function determineRole(joinerIndex: number): Role {
+  if (joinerIndex < MAX_GROUPS) return "senior";
+  const slot = Math.floor((joinerIndex - MAX_GROUPS) / MAX_GROUPS);
+  if (slot < 2) return "early-career";
+  return slot % 2 === 0 ? "mid-career" : "early-career";
+}
+
 function getOrCreateToken(): string {
   let token = localStorage.getItem("gg_token");
   if (!token) {
@@ -36,16 +46,10 @@ export function PlayerPage() {
   const [joining, setJoining] = useState(false);
   const [previewRole, setPreviewRole] = useState<Role | null>(null);
 
-  const roles = ["early-career", "mid-career", "senior"] as const;
-
   // Lock the preview role the first time players loads — never shifts as others join
   useEffect(() => {
     if (previewRole !== null || players === undefined) return;
-    const counts: Record<Role, number> = { "early-career": 0, "mid-career": 0, "senior": 0 };
-    players.forEach((p) => { if (p.role in counts) counts[p.role as Role]++; });
-    const min = Math.min(counts["early-career"], counts["mid-career"], counts["senior"]);
-    const leastFilled = roles.find((r) => counts[r] === min) ?? "early-career";
-    setPreviewRole(leastFilled);
+    setPreviewRole(determineRole(players.length));
   }, [players]);
 
   // Seed default face once role is known
